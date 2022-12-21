@@ -25,7 +25,7 @@ You'll need to create a proxmox user that can access the API. You can limit the 
 
 ``` json
 {
-  "User": "sampleuser@pam",
+  "User": "sampleuser@pve",
   "Pass": "samplepassword",
   "Host": "192.168.0.20",
   "Port": "8006"
@@ -34,7 +34,19 @@ You'll need to create a proxmox user that can access the API. You can limit the 
 
 NOTE: The port number is the port number to proxmox NOT the port for the metrics.
 
-You can either compile the binary or download one the releases.
+Alternatively, you can use the environment variables:  
+
+|Name      | Default   | Usage |
+|----------|-----------|-------|
+|PROX_USER | `root`      | User to use to login. Remebe to append `@pve` or `@pam` for PVE or PAM users. |
+|PROX_PASS | `password`  | The password of the user |
+|PROX_HOST | `127.0.0.1` | Remote host |
+|PROX_PORT | `8006`      | Remote port |
+|PORT      | `9000`      | Listening port of the service |
+
+The Proxmox user needs to have the permission `Datastore.Audit` on the `/` path (you will need to create a custom role) (please don't use a full-admin user, and use a pve user).  
+
+You can either compile the binary, use the docker container or download one the releases.
 
 Example install using systemd (Make sure to get the current release from the release page and change the wget command):
 
