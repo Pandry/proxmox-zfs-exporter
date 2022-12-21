@@ -46,7 +46,7 @@ Alternatively, you can use the environment variables:
 
 The Proxmox user needs to have the permission `Datastore.Audit` on the `/` path (you will need to create a custom role) (please don't use a full-admin user, and use a pve user).  
 
-You can either compile the binary, use the docker container or download one the releases.
+You can either compile the binary, use the docker image (`ghcr.io/pandry/proxmox-zfs-exporter`) or download one the releases.
 
 Example install using systemd (Make sure to get the current release from the release page and change the wget command):
 
