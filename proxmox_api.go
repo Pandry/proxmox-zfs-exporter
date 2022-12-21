@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
+	"errors"
+	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -90,16 +92,17 @@ func (api *ProxmoxAPI) GetAPITicket() (string, error) {
 
 	url := "https://" + host + ":" + port + "/api2/json/access/ticket?username=" + user + "&password=" + pass
 	c := &tls.Config{
+		// TODO: env variable to disable
 		InsecureSkipVerify: true,
 	}
 	tr := &http.Transport{TLSClientConfig: c}
 	client := &http.Client{Transport: tr}
-	//client := &http.Client{}
+
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Add("Content-type", "application/json")
+	//req.Header.Add("Content-type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -107,10 +110,17 @@ func (api *ProxmoxAPI) GetAPITicket() (string, error) {
 	}
 	defer resp.Body.Close() //Close the resp body when finished
 
+	if resp.StatusCode != 200 {
+		return "", errors.New("Expected status 200, got " + strconv.Itoa(resp.StatusCode) + "; " + resp.Status + "; Check your credentials")
+	}
+
 	respBody := ProxmoxAPITicketResp{}
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
-		return "", err
+		log.Println(err)
+		log.Println(respBody.Data.Ticket)
+		log.Println(respBody.Data.Username)
+		return respBody.Data.Ticket, err
 	}
 
 	return respBody.Data.Ticket, nil
@@ -126,6 +136,7 @@ func (api *ProxmoxAPI) GetNodes() (ProxmoxAPINodesListResp, error) {
 
 	url := "https://" + host + ":" + port + "/api2/json/nodes"
 	c := &tls.Config{
+		// TODO: env variable to disable
 		InsecureSkipVerify: true,
 	}
 	tr := &http.Transport{TLSClientConfig: c}
@@ -167,6 +178,7 @@ func (api *ProxmoxAPI) GetZpoolList(node string) (ProxmoxAPIZpoolListResp, error
 
 	url := "https://" + host + ":" + port + "/api2/json/nodes/" + node + "/disks/zfs"
 	c := &tls.Config{
+		// TODO: env variable to disable
 		InsecureSkipVerify: true,
 	}
 	tr := &http.Transport{TLSClientConfig: c}
@@ -208,11 +220,11 @@ func (api *ProxmoxAPI) GetZpool(node string, name string) (ProxmoxAPIZpoolResp, 
 
 	url := "https://" + host + ":" + port + "/api2/json/nodes/" + node + "/disks/zfs/" + name
 	c := &tls.Config{
+		// TODO: env variable to disable
 		InsecureSkipVerify: true,
 	}
 	tr := &http.Transport{TLSClientConfig: c}
 	client := &http.Client{Transport: tr}
-	//client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return ProxmoxAPIZpoolResp{}, err
@@ -244,22 +256,23 @@ func (api *ProxmoxAPI) refreshTicket() {
 	for {
 		newTicket, err := api.GetAPITicket()
 		if err != nil {
-			fmt.Println("Could not retrieve new ticket. Retry on next check...")
+			log.Println("Could not retrieve new ticket. Retry on next check... Error:", err)
+		} else {
+			log.Println("Refreshed ticket")
+			api.setTicket(newTicket)
 		}
-		api.setTicket(newTicket)
-		fmt.Println("Refreshed ticket")
 		<-ticker.C
 	}
 }
 
 func (api *ProxmoxAPI) waitForTicket() {
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Second * 10)
 	for {
+		<-ticker.C
 		if api.getTicket() != "" {
 			break
 		} else {
-			fmt.Println("Waiting to get ticket")
+			log.Println("Waiting to get ticket...")
 		}
-		<-ticker.C
 	}
 }
